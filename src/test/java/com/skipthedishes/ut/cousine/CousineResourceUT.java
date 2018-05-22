@@ -1,8 +1,13 @@
 package com.skipthedishes.ut.cousine;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.ArrayList;
@@ -18,12 +23,10 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.config.EnableSpringDataWebSupport;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.RequestBuilder;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import com.skipthedishes.dto.CousineDto;
 import com.skipthedishes.dto.StoreDto;
@@ -54,12 +57,12 @@ public class CousineResourceUT {
 
 		when(this.cousineService.save(Mockito.any(CousineDto.class))).thenReturn(mockCousine);
 
-		RequestBuilder requestBuilder = MockMvcRequestBuilders.post("/cousine")
+		RequestBuilder requestBuilder = post("/cousine")
 				.content(exampleCousineJson)
 				.accept(MediaType.APPLICATION_JSON)
-				.contentType(MediaType.APPLICATION_JSON);
+				.contentType(MediaType.APPLICATION_JSON);  
 
-		assertEquals(HttpStatus.CREATED.value(), mockMvc.perform(requestBuilder).andReturn().getResponse().getStatus());
+		mockMvc.perform(requestBuilder).andExpect(status().isCreated()).andExpect(header().string("Location", "/cousine/3")); 
 	}
 
 	@Test
@@ -83,11 +86,14 @@ public class CousineResourceUT {
 		
 		when(this.cousineService.findByName(search)).thenReturn(new CousineDto(1, search));
 		
-		RequestBuilder requestBuilder = MockMvcRequestBuilders.get("/cousine/search/{searchText}", search)
+		RequestBuilder requestBuilder = get("/cousine/search/{searchText}", search)
 				.accept(MediaType.APPLICATION_JSON)
 				.contentType(MediaType.APPLICATION_JSON);
 		
-		this.mockMvc.perform(requestBuilder).andExpect(status().isOk()).andExpect(content().string("{\"id\":1,\"name\":\"Sushi\"}")); 
+		this.mockMvc.perform(requestBuilder) 
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("id", is(1)))
+				.andExpect(jsonPath("name", is("Sushi"))); 
 	}
 	
 	@Test
@@ -100,7 +106,7 @@ public class CousineResourceUT {
 		
 		when(this.cousineService.findStores(1, pageable)).thenReturn(dtos);  
 		
-		RequestBuilder requestBuilder = MockMvcRequestBuilders.get("/cousine/{cousineId}/stores", 1)
+		RequestBuilder requestBuilder = get("/cousine/{cousineId}/stores", 1)
 				.accept(MediaType.APPLICATION_JSON)
 				.contentType(MediaType.APPLICATION_JSON); 
 		

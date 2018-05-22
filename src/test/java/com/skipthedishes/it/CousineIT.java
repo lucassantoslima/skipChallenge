@@ -20,8 +20,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.annotation.DirtiesContext.ClassMode;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -32,7 +30,7 @@ import com.skipthedishes.dto.CustomerDto;
 import com.skipthedishes.resource.CousineResource;
 
 @RunWith(SpringRunner.class)
-@DirtiesContext(classMode = ClassMode.AFTER_EACH_TEST_METHOD)
+//@DirtiesContext(classMode = ClassMode.AFTER_EACH_TEST_METHOD)
 @SpringBootTest(classes = { SkipChallengeApplication.class,	H2JpaConfig.class }, webEnvironment = WebEnvironment.RANDOM_PORT)
 public class CousineIT {
 
@@ -45,8 +43,6 @@ public class CousineIT {
 	@Autowired
     private TestRestTemplate restTemplate;
 
-	private String token; 
-
 	@Test
 	public void contexLoads() throws Exception {
 		assertThat(resource).isNotNull(); 
@@ -54,15 +50,11 @@ public class CousineIT {
 	
 	@Test
 	public void searchByName() {
-		HttpHeaders headers = new HttpHeaders();
-	    headers.add(HttpHeaders.AUTHORIZATION, "Bearer " + token);
-	    headers.setContentType(MediaType.APPLICATION_JSON);
-	    
-	    HttpEntity<String> entity = new HttpEntity<String>(headers);
+	    HttpEntity<String> entity = new HttpEntity<String>(getHearderWithToken());
 	    
 	    URI build = UriComponentsBuilder.fromUriString("/cousine/search/{searchText}").build("Sushi");
 		
-	    ResponseEntity<CustomerDto> responseEntity = restTemplate.exchange(build, HttpMethod.GET, entity, CustomerDto.class);
+	    ResponseEntity<CustomerDto> responseEntity = this.restTemplate.exchange(build, HttpMethod.GET, entity, CustomerDto.class);
 		
 	    CustomerDto body = responseEntity.getBody();
 	    
@@ -72,34 +64,35 @@ public class CousineIT {
 	
 	@Test
 	public void createCousine() {
-		HttpHeaders headers = new HttpHeaders();
-	    headers.add(HttpHeaders.AUTHORIZATION, "Bearer " + token);
-	    headers.setContentType(MediaType.APPLICATION_JSON);
-	   
 	    String requestJson = "{\"name\":\"Brazilian\"}"; 
 	    
-	    HttpEntity<String> entity = new HttpEntity<String>(requestJson,headers);
+	    HttpEntity<String> entity = new HttpEntity<String>(requestJson, getHearderWithToken());
 		
-		ResponseEntity<CousineDto> responseEntity = restTemplate.postForEntity("/cousine", entity, CousineDto.class);
+		ResponseEntity<CousineDto> responseEntity = this.restTemplate.postForEntity("/cousine", entity, CousineDto.class);
 		CousineDto client = responseEntity.getBody();
 
 		assertEquals(HttpStatus.CREATED, responseEntity.getStatusCode());
 		assertEquals("Brazilian", client.getName());
+		assertEquals("http://localhost:"+ port +"/api/v1/cousine/3", responseEntity.getHeaders().getLocation().toString()); 
+		
+	}
+
+	private HttpHeaders getHearderWithToken() {
+		HttpHeaders headers = new HttpHeaders();
+	    headers.add(HttpHeaders.AUTHORIZATION, "Bearer " + getToken()); 
+	    headers.setContentType(MediaType.APPLICATION_JSON);
+		return headers;
 	}
 	
 	@Test
 	public void updateCousine() {
-		HttpHeaders headers = new HttpHeaders();
-	    headers.add(HttpHeaders.AUTHORIZATION, "Bearer " + token);
-	    headers.setContentType(MediaType.APPLICATION_JSON);
-	    
 	    String requestJson = "{\"name\":\"Brazilian\"}";
 	    
 	    URI build = UriComponentsBuilder.fromUriString("/cousine/{id}").build(2); 
 	    
-	    HttpEntity<String> entity = new HttpEntity<String>(requestJson,headers);
+	    HttpEntity<String> entity = new HttpEntity<String>(requestJson, getHearderWithToken());
 		
-		ResponseEntity<CousineDto> responseEntity = restTemplate.exchange(build, HttpMethod.PUT, entity, CousineDto.class);
+		ResponseEntity<CousineDto> responseEntity = this.restTemplate.exchange(build, HttpMethod.PUT, entity, CousineDto.class);
 		CousineDto client = responseEntity.getBody();
 
 		assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
@@ -108,17 +101,13 @@ public class CousineIT {
 	
 	@Test
 	public void updatePartialCousine() {
-		HttpHeaders headers = new HttpHeaders();
-	    headers.add(HttpHeaders.AUTHORIZATION, "Bearer " + token);
-	    headers.setContentType(MediaType.APPLICATION_JSON);
-	    
 	    String requestJson = "{\"name\":\"Brazilian\"}"; 
 	    
 	    URI build = UriComponentsBuilder.fromUriString("/cousine/{id}").build(2); 
 	    
-	    HttpEntity<String> entity = new HttpEntity<String>(requestJson,headers);
+	    HttpEntity<String> entity = new HttpEntity<String>(requestJson,getHearderWithToken());
 		
-		ResponseEntity<CousineDto> responseEntity = restTemplate.exchange(build, HttpMethod.PATCH, entity, CousineDto.class);
+		ResponseEntity<CousineDto> responseEntity = this.restTemplate.exchange(build, HttpMethod.PATCH, entity, CousineDto.class);
 		CousineDto client = responseEntity.getBody();
 
 		assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
@@ -127,8 +116,12 @@ public class CousineIT {
 	
 	@Before
 	public void before() {
-		HttpEntity<CustomerDto> request = new HttpEntity<>(new CustomerDto("felipe@hotmail.con", "Felipe Lima", "Rua Tenente Lira", LocalDateTime.now(), "1234568")); 
-		this.token = restTemplate.postForObject("http://localhost:" + port + "/api/v1/customer", request, String.class);
+		
+	}
+
+	private String getToken() {
+		HttpEntity<CustomerDto> request = new HttpEntity<>(new CustomerDto("felipe@hotmail.com", "Felipe Lima", "Rua Tenente Lira", LocalDateTime.now(), "1234568")); 
+		return this.restTemplate.postForObject("http://localhost:" + port + "/api/v1/customer", request, String.class);
 	}
 
 }
